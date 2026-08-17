@@ -8,7 +8,7 @@
       <div>
         <h3 class="text-white mb-3">Sistem Qurban RT 001</h3>
         <p class="text-white opacity-75">Desa AAAA</p>
-        <p class="text-white opacity-75">© <?php echo date('Y'); ?> NIM : 122 & 123</p>
+        <p class="text-white opacity-75">© <?php echo date('Y'); ?> Academic project demo</p>
         <p>Proyek akademik demonstrasi</p>
       </div>
 

@@ -1,43 +1,44 @@
 # QA Report
 
-Tanggal pemeriksaan: 2026-08-17
+Validation date: 2026-08-17
 
 ## Status
 
-Aplikasi PHP dapat dijalankan dengan database MariaDB sementara menggunakan konfigurasi environment variable.
+The PHP application runs successfully with the included Docker Compose environment and an anonymous demo database.
 
-## Pemeriksaan yang lulus
+## Passed checks
 
-- Syntax check seluruh file PHP: lulus.
-- Import database public-safe: lulus, terdiri dari 9 tabel dan 2 view.
-- Smoke test route terautentikasi: 27 route, 0 runtime error.
-- Login dan session role baru: lulus.
-- Homepage setelah login: lulus.
-- Input transaksi keuangan: lulus.
-- Pencatatan pembayaran dengan enum database: lulus.
-- Verifikasi pembayaran dan pembuatan transaksi: lulus.
-- Pendaftaran peserta qurban: lulus.
-- Update status pembayaran peserta: lulus.
-- Generate distribusi dan verifikasi QR: lulus.
-- Alur aktivasi akun: lulus.
-- Docker Compose app + database dan homepage smoke test: lulus.
-- Build dan lint scaffold frontend lama sebelum cleanup: lulus.
+- PHP syntax check across the application.
+- Clean MariaDB schema and seed import: 9 tables and 2 views.
+- Authenticated route crawl: 27 PHP routes with 0 runtime errors.
+- Login and role-based session handling.
+- Homepage rendering after login.
+- Financial transaction input.
+- Payment creation with database-compatible enum values.
+- Payment verification and transaction creation.
+- Qurban participant registration.
+- Participant payment status update.
+- Meat distribution generation and QR claim verification.
+- Account activation flow.
+- Docker Compose startup and browser smoke test.
+- Five documentation screenshots captured with anonymous demo data.
 
-## Perbaikan yang sudah dilakukan
+## Implemented fixes
 
-- Menghapus ketergantungan pada kredensial database yang tertanam di source code.
-- Menyatukan pemeriksaan session dengan schema berbasis NIK dan role flags.
-- Memperbaiki path file root yang salah.
-- Memperbaiki query transaksi dan distribusi yang memakai nama kolom lama.
-- Menyesuaikan pilihan pembayaran dengan enum database.
-- Menambahkan validasi dasar pembayaran.
-- Mengganti data dump lama dengan data demo anonim.
-- Menghapus data kontak personal dari footer demo.
-- Menambahkan README dan contoh konfigurasi environment.
+- Removed hardcoded database credentials from the application source.
+- Unified session checks around NIK and role flags.
+- Fixed incorrect root-level include paths.
+- Fixed transaction and distribution queries that referenced removed user ID columns.
+- Aligned payment options with the database enum.
+- Added basic payment input validation.
+- Replaced the old database dump with anonymous demo data.
+- Removed personal contact and academic identity data from the demo footer.
+- Removed the unused React/Vite scaffold.
+- Added README, environment example, Docker setup, and release documentation.
 
-## Pending sebelum public release
+## Release notes
 
-- Riwayat Git awal masih menyimpan versi lama yang pernah berisi kredensial dan data demo. Public release harus memakai riwayat bersih atau repository history baru.
-- Scaffold React/Vite yang tidak digunakan sudah dihapus dari release branch dan disimpan di backup lokal terpisah.
-- Kredensial demo hanya untuk lokal dan harus diganti atau dihapus sebelum deployment nyata.
-- Lisensi repository belum dipilih.
+- The public release uses a clean orphan Git history so the old baseline is not included.
+- Demo credentials are for local testing only.
+- The repository does not include a production license yet.
+- CSRF protection, automated browser tests, local QR generation, and production deployment configuration remain future improvements.
