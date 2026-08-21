@@ -55,10 +55,10 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                         <?php endif; ?>
 
                         <form method="POST" action="proses_register.php" id="registerForm">
+                            <?php echo csrf_field(); ?>
                             <div class="form-group mb-3">
-                                <label for="nik" class="form-label">Cari dan Pilih NIK Anda</label>
-                                <input type="text" id="nik" name="nik" class="form-control" placeholder="Ketik NIK atau nama untuk mencari..." required autocomplete="off">
-                                <div id="nik-suggestions" class="nik-suggestion-box mt-1 d-none"></div>
+                                <label for="nik" class="form-label">NIK Warga</label>
+                                <input type="text" id="nik" name="nik" class="form-control" placeholder="Masukkan NIK sesuai data warga" required inputmode="numeric" autocomplete="off">
                             </div>
                             <div class="form-group mb-3">
                                 <label for="username" class="form-label">Buat Username</label>
@@ -84,61 +84,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     </main>
 
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const nikInput = document.getElementById('nik');
-        const suggestionBox = document.getElementById('nik-suggestions');
-        let nikData = [];
-
-        // Ambil data NIK dari API
-        fetch('../api/get_unregistered_niks.php')
-            .then(response => response.json())
-            .then(data => {
-                nikData = data;
-            })
-            .catch(error => {
-                console.error('Error fetching NIK data:', error);
-            });
-
-        nikInput.addEventListener('keyup', function() {
-            const query = this.value.toLowerCase();
-            suggestionBox.innerHTML = '';
-
-            if (query.length < 2) {
-                suggestionBox.classList.add('d-none');
-                return;
-            }
-
-            const filteredData = nikData.filter(item => {
-                return item.nik.includes(query) ||
-                       item.nama_lengkap.toLowerCase().includes(query);
-            });
-
-            if (filteredData.length > 0) {
-                suggestionBox.classList.remove('d-none');
-                filteredData.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'nik-suggestion-item';
-                    div.textContent = `${item.nik} - ${item.nama_lengkap}`;
-                    div.addEventListener('click', function() {
-                        nikInput.value = item.nik;
-                        suggestionBox.classList.add('d-none');
-                    });
-                    suggestionBox.appendChild(div);
-                });
-            } else {
-                suggestionBox.classList.add('d-none');
-            }
-        });
-
-        // Tutup suggestion box ketika klik di luar
-        document.addEventListener('click', function(e) {
-            if (e.target.id !== 'nik') {
-                suggestionBox.classList.add('d-none');
-            }
-        });
-
-        // Validasi form sebelum submit
-        document.getElementById('registerForm').addEventListener('submit', function(e) {
+    document.getElementById('registerForm').addEventListener('submit', function(e) {
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirm_password').value;
 
@@ -146,7 +92,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                 e.preventDefault();
                 alert('Password dan konfirmasi password tidak cocok!');
             }
-        });
     });
     </script>
 </body>

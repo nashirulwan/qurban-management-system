@@ -1,5 +1,6 @@
 <?php
 // file: src/components/header.php (Untuk Halaman Publik)
+require_once __DIR__ . '/../../function/helper.php';
 
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
@@ -23,7 +24,10 @@ if (session_status() == PHP_SESSION_NONE) {
         <?php elseif (!empty($_SESSION['is_warga'])): ?>
            <a href="warga/index.php" class="nav-link">Dashboard</a>
         <?php endif; ?>
-        <a href="auth/logout.php" class="nav-link btn btn-outline-primary">Logout</a>
+        <form method="POST" action="auth/logout.php" class="d-inline">
+          <?php echo csrf_field(); ?>
+          <button type="submit" class="nav-link btn btn-outline-primary">Logout</button>
+        </form>
       <?php else: ?>
         <a href="auth/login.php" class="nav-link btn btn-primary">Login</a>
       <?php endif; ?>

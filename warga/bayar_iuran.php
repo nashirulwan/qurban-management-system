@@ -9,14 +9,23 @@ $periode_data = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM periode_qu
 $id_periode_aktif = $periode_data['id_periode'] ?? 0;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $id_periode_aktif) {
+    verify_csrf_request();
     $nik_pembayar = mysqli_real_escape_string($conn, (string) $_SESSION['nik']);
     $jenis_iuran_input = trim((string) ($_POST['jenis_iuran'] ?? ''));
     $nominal = (float) preg_replace('/[^\d]/', '', (string) ($_POST['nominal'] ?? ''));
     $metode_bayar_input = (string) ($_POST['metode_bayar'] ?? '');
     $allowed_jenis_iuran = ['qurban_sapi', 'qurban_kambing', 'administrasi_sapi', 'administrasi_kambing', 'lainnya'];
     $allowed_metode_bayar = ['tunai', 'transfer'];
+    $nominal_tetap = [
+        'qurban_sapi' => 3000000,
+        'qurban_kambing' => 2700000,
+        'administrasi_sapi' => 100000,
+        'administrasi_kambing' => 50000,
+    ];
+    $nominal_valid = !array_key_exists($jenis_iuran_input, $nominal_tetap)
+        || (int) $nominal === $nominal_tetap[$jenis_iuran_input];
 
-    if (!in_array($jenis_iuran_input, $allowed_jenis_iuran, true) || !in_array($metode_bayar_input, $allowed_metode_bayar, true) || $nominal <= 0) {
+    if (!in_array($jenis_iuran_input, $allowed_jenis_iuran, true) || !in_array($metode_bayar_input, $allowed_metode_bayar, true) || $nominal <= 0 || !$nominal_valid) {
         $error = 'Jenis iuran, metode pembayaran, dan nominal harus valid.';
     } else {
         $jenis_iuran = mysqli_real_escape_string($conn, $jenis_iuran_input);
@@ -76,6 +85,7 @@ if (!function_exists('rupiah')) {
                         </div>
 
                         <form method="POST" class="needs-validation mt-4">
+                            <?php echo csrf_field(); ?>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="jenis_iuran" class="form-label">Jenis Iuran:</label>

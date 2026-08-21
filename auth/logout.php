@@ -1,5 +1,13 @@
 <?php
-session_start();
+require_once '../function/helper.php';
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    exit('Logout harus menggunakan POST.');
+}
+
+verify_csrf_request();
 
 $_SESSION = [];
 if (ini_get('session.use_cookies')) {

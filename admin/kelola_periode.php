@@ -10,6 +10,7 @@ unset($_SESSION['error_message']);
 
 // Proses tambah periode
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'tambah') {
+    verify_csrf_request();
     $tahun_hijriah = mysqli_real_escape_string($conn, $_POST['tahun_hijriah']);
     $tahun_masehi = intval($_POST['tahun_masehi']);
     $tanggal_pelaksanaan = mysqli_real_escape_string($conn, $_POST['tanggal_pelaksanaan']);
@@ -23,26 +24,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     }
 }
 
-// Proses aktivasi periode
-if (isset($_GET['activate'])) {
-    $id = intval($_GET['activate']);
-    mysqli_query($conn, "UPDATE periode_qurban SET is_active = 0");
-    mysqli_query($conn, "UPDATE periode_qurban SET is_active = 1 WHERE id_periode = $id");
-    header("Location: kelola_periode.php");
-    exit();
-}
-
-if (isset($_GET['delete'])) {
-    $id = intval($_GET['delete']);
-    $cek_hewan = mysqli_query($conn, "SELECT id_hewan FROM hewan_qurban WHERE id_periode = $id");
-    if(mysqli_num_rows($cek_hewan) > 0){
-        $_SESSION['error_message'] = "Tidak bisa menghapus periode karena sudah digunakan di data hewan qurban.";
-    } else {
-        mysqli_query($conn, "DELETE FROM periode_qurban WHERE id_periode = $id AND is_active = 0");
-    }
-    header("Location: kelola_periode.php");
-    exit();
-}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -68,6 +49,7 @@ if (isset($_GET['delete'])) {
                 </div>
                 <div class="card-body">
                     <form method="POST" class="row g-3">
+                        <?php echo csrf_field(); ?>
                         <input type="hidden" name="action" value="tambah">
                         <div class="col-md-4">
                             <label for="tahun_hijriah" class="form-label">Tahun Hijriah</label>

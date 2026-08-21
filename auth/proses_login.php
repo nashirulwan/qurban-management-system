@@ -7,6 +7,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
+verify_csrf_request();
+
 $login_identifier = trim((string) ($_POST['login_identifier'] ?? ''));
 $password_dari_form = (string) ($_POST['password'] ?? '');
 

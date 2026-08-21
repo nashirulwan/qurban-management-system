@@ -68,6 +68,7 @@ if ($id_periode_aktif) {
                                     </td>
                                     <td class="text-center">
                                         <form method="POST" action="proses_update_pembayaran_qurban.php" class="d-inline-flex">
+                                            <?php echo csrf_field(); ?>
                                             <input type="hidden" name="id_peserta" value="<?php echo $row['id_peserta']; ?>">
                                             <div class="input-group">
                                                 <select name="status_baru" class="form-select form-select-sm" <?php if($row['status_bayar'] == 'lunas') echo 'disabled'; ?>>

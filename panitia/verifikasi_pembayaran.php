@@ -8,60 +8,87 @@ cek_login();
 cek_role('panitia');
 
 // Proses verifikasi
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
-    $id_pembayaran = intval($_POST['id_pembayaran']);
-    $action = $_POST['action'];
-    $status = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    verify_csrf_request();
+    $id_pembayaran = filter_input(INPUT_POST, 'id_pembayaran', FILTER_VALIDATE_INT);
+    $action = (string) ($_POST['action'] ?? '');
+    $status = $action === 'verify' ? 'terverifikasi' : ($action === 'reject' ? 'ditolak' : '');
+    $nik_verifikator = (string) $_SESSION['nik'];
 
-    if ($action === 'verify') {
-        $status = 'terverifikasi';
-    } elseif ($action === 'reject') {
-        $status = 'ditolak';
-    }
-
-    $nik_verifikator = $_SESSION['nik'];
-
-    if (!empty($status)) {
-        // Update status pembayaran
-        $query_update = "UPDATE pembayaran_iuran
-                         SET status_verifikasi = '$status', nik_verifikator = '$nik_verifikator'
-                         WHERE id_pembayaran = $id_pembayaran AND status_verifikasi = 'pending'";
-
-        if (mysqli_query($conn, $query_update) && mysqli_affected_rows($conn) > 0) {
-            // Jika terverifikasi, catat ke transaksi keuangan
-            if ($status == 'terverifikasi') {
-                $query_pembayaran_data = "SELECT p.*, u.nama_lengkap
-                                          FROM pembayaran_iuran p
-                                          JOIN users u ON p.nik_pembayar = u.nik
-                                          WHERE p.id_pembayaran = $id_pembayaran";
-                $result_pembayaran_data = mysqli_query($conn, $query_pembayaran_data);
-                $pembayaran = mysqli_fetch_assoc($result_pembayaran_data);
-
-                if ($pembayaran) {
-                    $nama_pembayar = mysqli_real_escape_string($conn, $pembayaran['nama_lengkap']);
-                    $jenis_iuran = mysqli_real_escape_string($conn, $pembayaran['jenis_iuran']);
-                    $tanggal_bayar = mysqli_real_escape_string($conn, $pembayaran['tanggal_bayar']);
-                    $nik_verifikator_db = mysqli_real_escape_string($conn, $nik_verifikator);
-                    $keterangan_transaksi = "Pembayaran " . str_replace('_', ' ', $jenis_iuran) . " a/n " . $nama_pembayar . " (ID Bayar: $id_pembayaran)";
-                    $keterangan_transaksi = mysqli_real_escape_string($conn, $keterangan_transaksi);
-
-                    $query_transaksi = "INSERT INTO transaksi_keuangan (id_periode, jenis_transaksi, kategori, keterangan, nominal, tanggal_transaksi, nik_user_input)
-                                        VALUES ({$pembayaran['id_periode']}, 'masuk', '$jenis_iuran', '$keterangan_transaksi', {$pembayaran['nominal']}, '$tanggal_bayar', '$nik_verifikator_db')";
-
-                    if (mysqli_query($conn, $query_transaksi)) {
-                        $id_transaksi_baru = mysqli_insert_id($conn);
-                        mysqli_query($conn, "UPDATE pembayaran_iuran SET id_transaksi = $id_transaksi_baru WHERE id_pembayaran = $id_pembayaran");
-                    } else {
-                        error_log('Failed to create payment transaction: ' . mysqli_error($conn));
-                    }
-                }
-            }
-            $success = "Status pembayaran berhasil diubah menjadi " . ucfirst($status) . "!";
-        } else {
-            $error = "Gagal mengubah status: Pembayaran mungkin sudah diproses atau tidak ditemukan.";
-        }
+    if (!$id_pembayaran || $status === '') {
+        $error = "Aksi atau pembayaran tidak valid.";
     } else {
-        $error = "Aksi tidak valid.";
+        mysqli_begin_transaction($conn);
+        try {
+            $query_pembayaran_data = "SELECT p.*, u.nama_lengkap
+                                      FROM pembayaran_iuran p
+                                      JOIN users u ON p.nik_pembayar = u.nik
+                                      WHERE p.id_pembayaran = ? AND p.status_verifikasi = 'pending'
+                                      FOR UPDATE";
+            $stmt_pembayaran = mysqli_prepare($conn, $query_pembayaran_data);
+            if (!$stmt_pembayaran) {
+                throw new RuntimeException('Gagal menyiapkan pembayaran.');
+            }
+            mysqli_stmt_bind_param($stmt_pembayaran, 'i', $id_pembayaran);
+            mysqli_stmt_execute($stmt_pembayaran);
+            $result_pembayaran_data = mysqli_stmt_get_result($stmt_pembayaran);
+            $pembayaran = $result_pembayaran_data ? mysqli_fetch_assoc($result_pembayaran_data) : null;
+            mysqli_stmt_close($stmt_pembayaran);
+
+            if (!$pembayaran) {
+                throw new RuntimeException('Pembayaran mungkin sudah diproses atau tidak ditemukan.');
+            }
+
+            $id_transaksi_baru = null;
+            if ($status === 'terverifikasi') {
+                $jenis_transaksi = 'masuk';
+                $kategori = (string) $pembayaran['jenis_iuran'];
+                $keterangan_transaksi = "Pembayaran " . str_replace('_', ' ', $kategori) . " a/n " . $pembayaran['nama_lengkap'] . " (ID Bayar: $id_pembayaran)";
+                $query_transaksi = "INSERT INTO transaksi_keuangan
+                                    (id_periode, jenis_transaksi, kategori, keterangan, nominal, tanggal_transaksi, nik_user_input)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?)";
+                $stmt_transaksi = mysqli_prepare($conn, $query_transaksi);
+                if (!$stmt_transaksi) {
+                    throw new RuntimeException('Gagal menyiapkan transaksi pembayaran.');
+                }
+                mysqli_stmt_bind_param(
+                    $stmt_transaksi,
+                    'isssdss',
+                    $pembayaran['id_periode'],
+                    $jenis_transaksi,
+                    $kategori,
+                    $keterangan_transaksi,
+                    $pembayaran['nominal'],
+                    $pembayaran['tanggal_bayar'],
+                    $nik_verifikator
+                );
+                if (!mysqli_stmt_execute($stmt_transaksi)) {
+                    throw new RuntimeException('Gagal mencatat transaksi pembayaran.');
+                }
+                $id_transaksi_baru = mysqli_stmt_insert_id($stmt_transaksi);
+                mysqli_stmt_close($stmt_transaksi);
+            }
+
+            if ($id_transaksi_baru === null) {
+                $query_update = "UPDATE pembayaran_iuran SET status_verifikasi = ?, nik_verifikator = ? WHERE id_pembayaran = ?";
+                $stmt_update = mysqli_prepare($conn, $query_update);
+                mysqli_stmt_bind_param($stmt_update, 'ssi', $status, $nik_verifikator, $id_pembayaran);
+            } else {
+                $query_update = "UPDATE pembayaran_iuran SET status_verifikasi = ?, nik_verifikator = ?, id_transaksi = ? WHERE id_pembayaran = ?";
+                $stmt_update = mysqli_prepare($conn, $query_update);
+                mysqli_stmt_bind_param($stmt_update, 'ssii', $status, $nik_verifikator, $id_transaksi_baru, $id_pembayaran);
+            }
+            if (!$stmt_update || !mysqli_stmt_execute($stmt_update)) {
+                throw new RuntimeException('Gagal memperbarui status pembayaran.');
+            }
+            mysqli_stmt_close($stmt_update);
+            mysqli_commit($conn);
+            $success = "Status pembayaran berhasil diubah menjadi " . ucfirst($status) . "!";
+        } catch (Throwable $exception) {
+            mysqli_rollback($conn);
+            error_log('Payment verification rolled back: ' . $exception->getMessage());
+            $error = $exception->getMessage();
+        }
     }
 }
 
@@ -128,10 +155,12 @@ $id_periode_aktif = $periode_data['id_periode'] ?? 0;
                                         <td><?php echo ucfirst(htmlspecialchars($row['metode_bayar'])); ?></td>
                                         <td class="text-center">
                                             <form method="POST" style="display: inline;" onsubmit="return confirm('Anda yakin ingin memverifikasi pembayaran ini?');">
+                                                <?php echo csrf_field(); ?>
                                                 <input type="hidden" name="id_pembayaran" value="<?php echo $row['id_pembayaran']; ?>">
                                                 <button type="submit" name="action" value="verify" class="btn btn-success btn-sm">Verifikasi</button>
                                             </form>
                                             <form method="POST" style="display: inline;" onsubmit="return confirm('Anda yakin ingin menolak pembayaran ini?');">
+                                                <?php echo csrf_field(); ?>
                                                 <input type="hidden" name="id_pembayaran" value="<?php echo $row['id_pembayaran']; ?>">
                                                 <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm">Tolak</button>
                                             </form>

@@ -13,6 +13,7 @@ $id_periode_aktif = $periode_data['id_periode'] ?? 0;
 
 // Proses input transaksi
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && $id_periode_aktif) { // Pastikan ada periode aktif
+    verify_csrf_request();
     $jenis_transaksi = mysqli_real_escape_string($conn, $_POST['jenis_transaksi']);
     $kategori = mysqli_real_escape_string($conn, $_POST['kategori']);
     $keterangan = mysqli_real_escape_string($conn, $_POST['keterangan']);
@@ -20,7 +21,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $id_periode_aktif) { // Pastikan ada
     $tanggal_transaksi = mysqli_real_escape_string($conn, $_POST['tanggal_transaksi']);
     $nik_user_input = mysqli_real_escape_string($conn, $_SESSION['nik']);
 
-    if (empty($jenis_transaksi) || empty($kategori) || empty($keterangan) || empty($nominal) || empty($tanggal_transaksi)) {
+    $allowed_kategori_by_jenis = [
+        'masuk' => [
+            'iuran_qurban', 'pembayaran_sapi', 'pembayaran_kambing', 'administrasi', 'donasi', 'lainnya_masuk',
+        ],
+        'keluar' => [
+            'pembelian_hewan', 'operasional_kandang', 'perlengkapan_penyembelihan', 'perlengkapan_distribusi',
+            'konsumsi_panitia', 'transportasi', 'biaya_jagal', 'lainnya_keluar',
+        ],
+    ];
+    $allowed_jenis_transaksi = array_keys($allowed_kategori_by_jenis);
+    $kategori_valid = isset($allowed_kategori_by_jenis[$jenis_transaksi])
+        && in_array($kategori, $allowed_kategori_by_jenis[$jenis_transaksi], true);
+    if (!in_array($jenis_transaksi, $allowed_jenis_transaksi, true) || !$kategori_valid || empty($keterangan) || $nominal <= 0 || empty($tanggal_transaksi)) {
         $error = "Semua field wajib diisi.";
     } else {
         $query_insert = "INSERT INTO transaksi_keuangan
@@ -93,6 +106,7 @@ if (!function_exists('rupiah')) {
                     </div>
                     <div class="card-body">
                         <form method="POST" class="needs-validation">
+                            <?php echo csrf_field(); ?>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="jenis_transaksi" class="form-label">Jenis Transaksi:</label>

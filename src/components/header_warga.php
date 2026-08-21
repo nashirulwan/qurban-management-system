@@ -1,5 +1,6 @@
 <?php
 // file: src/components/header_warga.php (Revisi Total Navigasi)
+require_once __DIR__ . '/../../function/helper.php';
 
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
@@ -28,7 +29,10 @@ if (session_status() == PHP_SESSION_NONE) {
         </li>
         <?php endif; ?>
 
-        <a href="../auth/logout.php" class="nav-link btn btn-outline-primary">Logout</a>
+        <form method="POST" action="../auth/logout.php" class="d-inline">
+          <?php echo csrf_field(); ?>
+          <button type="submit" class="nav-link btn btn-outline-primary">Logout</button>
+        </form>
     </nav>
   </div>
 </header>

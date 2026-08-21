@@ -13,6 +13,7 @@ $id_periode = $periode['id_periode'] ?? 0;
 
 // Proses tambah hewan
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
+    verify_csrf_request();
     if ($_POST['action'] == 'tambah') {
         $jenis_hewan = mysqli_real_escape_string($conn, $_POST['jenis_hewan']);
         $nomor_hewan = mysqli_real_escape_string($conn, $_POST['nomor_hewan']);
@@ -86,6 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
 
                 <div class="card-body">
                     <form method="POST" class="needs-validation">
+                        <?php echo csrf_field(); ?>
                         <input type="hidden" name="action" value="tambah">
 
                         <div class="d-flex flex-wrap gap-4">

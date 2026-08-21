@@ -14,6 +14,7 @@ if (empty($nik_user)) {
 
 // Proses update user saat form disubmit
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    verify_csrf_request();
     $nama_lengkap = mysqli_real_escape_string($conn, $_POST['nama_lengkap']);
     $no_kk = mysqli_real_escape_string($conn, $_POST['no_kk']);
     $alamat = mysqli_real_escape_string($conn, $_POST['alamat']);
@@ -89,6 +90,7 @@ if (!$user) {
                 <div class="card-header"><h2 class="card-title">Edit Data User</h2></div>
                 <div class="card-body">
                     <form method="POST">
+                        <?php echo csrf_field(); ?>
                         <div class="form-group mb-3">
                             <label for="nik_disabled" class="form-label">NIK</label>
                             <input type="text" id="nik_disabled" name="nik_disabled" class="form-control" value="<?php echo htmlspecialchars($user['nik']); ?>" disabled>

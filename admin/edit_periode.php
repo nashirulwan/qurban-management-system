@@ -11,6 +11,7 @@ $id_periode = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($id_periode == 0) { header("Location: kelola_periode.php"); exit(); }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    verify_csrf_request();
     if (isset($_POST['update'])) {
         $tahun_hijriah = mysqli_real_escape_string($conn, $_POST['tahun_hijriah']);
         $tahun_masehi = intval($_POST['tahun_masehi']);
@@ -59,6 +60,7 @@ if (!$periode) { header("Location: kelola_periode.php"); exit(); }
             <div class="card">
                 <div class="card-body">
                     <form method="POST">
+                        <?php echo csrf_field(); ?>
                         <div class="mb-3">
                             <label for="tahun_hijriah" class="form-label">Tahun Hijriah</label>
                             <input type="text" id="tahun_hijriah" name="tahun_hijriah" class="form-control" value="<?php echo htmlspecialchars($periode['tahun_hijriah']); ?>" required>

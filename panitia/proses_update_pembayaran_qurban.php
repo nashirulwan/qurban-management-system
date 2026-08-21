@@ -12,6 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+verify_csrf_request();
+
 $id_peserta = filter_input(INPUT_POST, 'id_peserta', FILTER_VALIDATE_INT);
 $status_baru = filter_input(INPUT_POST, 'status_baru', FILTER_SANITIZE_STRING);
 

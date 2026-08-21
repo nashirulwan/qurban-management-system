@@ -1,6 +1,6 @@
 # Qurban Management System
 
-A web-based academic project for managing qurban activities, including registration, payment verification, financial reporting, and meat distribution.
+A role-based web application for managing community qurban workflows, from participant registration and payment verification to financial reporting and meat distribution.
 
 ![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php&logoColor=white)
 ![MariaDB](https://img.shields.io/badge/MariaDB-10.11-003545?logo=mariadb&logoColor=white)
@@ -10,7 +10,7 @@ A web-based academic project for managing qurban activities, including registrat
 
 ## Overview
 
-The system provides separate workflows for administrators, committee members, residents, and qurban participants. It was rebuilt from an older academic project and verified locally with a clean demo database.
+Originally developed as an academic project, this version was rebuilt and hardened as a locally verifiable demo with anonymous data. It provides separate workflows for administrators, committee members, residents, and qurban participants.
 
 ## Features
 
@@ -22,7 +22,9 @@ The system provides separate workflows for administrators, committee members, re
 - Income and expense tracking.
 - Financial reports by qurban period.
 - Meat package distribution generation.
-- QR code-based package claim verification.
+- QR code and package-number claim verification.
+- CSRF-protected state-changing forms and POST-only logout.
+- Atomic payment verification and meat distribution generation.
 - Anonymous local demo data for safe testing.
 
 ## Screenshots
@@ -35,6 +37,8 @@ The system provides separate workflows for administrators, committee members, re
   <img src="docs/screenshots/04-payment-verification.png" alt="Payment verification" width="48%" />
   <img src="docs/screenshots/05-distribution.png" alt="Meat distribution" width="48%" />
 </p>
+
+The screenshots use the local anonymous demo database. Names, dates, and financial values shown in them are test data, not production records.
 
 ## Workflow
 
@@ -66,7 +70,7 @@ docker compose up --build
 
 Open `http://localhost:8000` in a browser.
 
-If the default host port is already in use:
+If the default host port is already in use, set `APP_PORT`:
 
 ```bash
 APP_PORT=18080 docker compose up --build
@@ -122,13 +126,17 @@ These credentials are intended only for local testing. Change or remove them bef
 
 ## Validation
 
-The current release was verified with:
+The latest local QA pass was completed on 2026-08-18 against the Docker Compose application and anonymous demo database:
 
-- PHP syntax checks across the application.
-- Clean MariaDB schema and seed import.
-- Authenticated crawl of 27 PHP routes with no runtime errors.
-- End-to-end checks for login, payments, verification, participant registration, transactions, distribution, and QR claims.
-- Docker Compose startup and browser smoke tests.
+- PHP syntax checks: `39/39` tracked PHP files passed.
+- JavaScript syntax check: `src/js/main.js` passed.
+- Authenticated route crawl: `23/23` application routes returned HTTP 200 without error markers.
+- Regression and security suite: `20/20` assertions passed.
+- Logout security suite: `7/7` assertions passed, including GET rejection and session invalidation after valid POST logout.
+- Coverage included CSRF rejection, protected NIK lookup, period and animal validation, payment amount validation, atomic payment verification, atomic distribution generation, QR/package-number claims, duplicate-claim rejection, and database mutation checks.
+- Browser smoke test passed for login, admin dashboard, homepage, payment verification, and distribution pages.
+- Five full-page documentation screenshots were captured from the same QA runtime.
+- Application logs after the final test run contained zero fatal errors, warnings, notices, MySQL errors, or undefined-function errors.
 
 See the detailed [QA report](docs/qa-report.md).
 
@@ -136,6 +144,9 @@ See the detailed [QA report](docs/qa-report.md).
 
 - Database credentials are supplied through environment variables rather than source code.
 - The included database seed contains anonymous demo data only.
+- State-changing application forms use server-side CSRF validation; logout is POST-only.
+- The NIK lookup endpoint requires an authenticated session.
+- Payment verification and meat distribution generation use database transactions.
 - Demo credentials must not be used in production.
 - QR image rendering currently uses an external QR generation service.
-- CSRF protection, automated browser tests, and production deployment configuration are future improvements.
+- This repository is not a complete production deployment. HTTPS, production secret management, backups, monitoring, full penetration testing, aggressive concurrency testing, failure injection, and a complete upload-security review still require separate work before deployment.

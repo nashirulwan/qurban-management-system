@@ -19,6 +19,7 @@ if (!$hewan) {
 
 // Proses update hewan
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    verify_csrf_request();
     $jenis_hewan = mysqli_real_escape_string($conn, $_POST['jenis_hewan']);
     $nomor_hewan = mysqli_real_escape_string($conn, $_POST['nomor_hewan']);
     $harga_hewan = (int)$_POST['harga_hewan'];
@@ -99,6 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 <div class="card-body">
                     <form method="POST" class="needs-validation">
+                        <?php echo csrf_field(); ?>
                         <div class="d-flex flex-wrap gap-4">
                             <div class="form-group" style="flex: 1; min-width: 200px;">
                                 <label for="jenis_hewan" class="form-label">Jenis Hewan</label>

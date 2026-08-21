@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once '../function/helper.php';
 // Jika sudah login, redirect ke halaman index utama yang akan mengarahkan sesuai role
 if (isset($_SESSION['nik'])) {
     header("Location: ../index.php");
@@ -43,6 +43,7 @@ if (isset($_SESSION['nik'])) {
                         <?php endif; ?>
 
                         <form method="POST" action="proses_login.php">
+                            <?php echo csrf_field(); ?>
                             <div class="form-group mb-3">
                                 <label for="login_identifier" class="form-label">NIK atau Username</label>
                                 <input type="text" id="login_identifier" name="login_identifier" class="form-control" required autofocus>

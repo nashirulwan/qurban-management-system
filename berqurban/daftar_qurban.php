@@ -10,6 +10,7 @@ $id_periode = $periode['id_periode'] ?? 0;
 $nik_user = $_SESSION['nik'];
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['id_hewan']) && $id_periode > 0) {
+    verify_csrf_request();
     $id_hewan = intval($_POST['id_hewan']);
 
     $hewan = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM hewan_qurban WHERE id_hewan = $id_hewan AND id_periode = $id_periode AND (status = 'rencana' OR status = 'tersedia')"));
@@ -82,6 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['id_hewan']) && $id_per
                     ?>
                     <?php if(mysqli_num_rows($result_hewan) > 0): ?>
                     <form method="POST">
+                        <?php echo csrf_field(); ?>
                         <div class="table-responsive">
                             <table class="table table-hover table-bordered">
                                 <thead class="table-light">

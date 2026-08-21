@@ -2,11 +2,6 @@
 session_start();
 require_once 'config/database.php';
 
-// Function to format currency
-function rupiah($angka) {
-    return "Rp " . number_format($angka, 0, ',', '.');
-}
-
 $session_roles = [];
 foreach (['admin' => 'Admin', 'panitia' => 'Panitia', 'berqurban' => 'Peserta Qurban', 'warga' => 'Warga'] as $role_key => $role_name) {
     if (!empty($_SESSION['is_' . $role_key])) {

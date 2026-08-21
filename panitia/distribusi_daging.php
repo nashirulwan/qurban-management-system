@@ -12,67 +12,85 @@ if ($periode_data = mysqli_fetch_assoc($result_periode_db)) {
     $id_periode_aktif = $periode_data['id_periode'];
 }
 
-// Fungsi placeholder jika generate_qr_code belum ada di helper.php
-if (!function_exists('generate_qr_code')) {
-    function generate_qr_code($data) {
-        // Placeholder: Mengembalikan data input sebagai "QR Code"
-        // Nantinya ini akan diganti dengan library pembuatan QR code
-        return "QR_" . hash('sha256', $data . time()); // Contoh QR code unik sederhana
-    }
-}
-
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['generate_distribusi']) && $id_periode_aktif) {
-    $id_hewan = intval($_POST['id_hewan']);
-    $kategori_penerima = mysqli_real_escape_string($conn, $_POST['kategori_penerima']);
-    $total_berat = floatval($_POST['total_berat']);
-    $jumlah_paket = intval($_POST['jumlah_paket']);
+    verify_csrf_request();
+    $id_hewan = filter_input(INPUT_POST, 'id_hewan', FILTER_VALIDATE_INT) ?: 0;
+    $kategori_penerima = trim((string) ($_POST['kategori_penerima'] ?? ''));
+    $total_berat = filter_input(INPUT_POST, 'total_berat', FILTER_VALIDATE_FLOAT);
+    $jumlah_paket = filter_input(INPUT_POST, 'jumlah_paket', FILTER_VALIDATE_INT);
+    $allowed_categories = ['warga', 'berqurban', 'panitia'];
 
-    if (empty($id_hewan) || empty($kategori_penerima) || $total_berat <= 0 || $jumlah_paket <= 0) {
+    if ($id_hewan <= 0 || !in_array($kategori_penerima, $allowed_categories, true) || !is_float($total_berat) || !is_int($jumlah_paket) || !is_finite($total_berat) || $total_berat <= 0 || $jumlah_paket <= 0) {
         $error = "Semua field wajib diisi dan harus valid.";
     } else {
         $berat_per_paket = $total_berat / $jumlah_paket;
+        $role_field = 'is_' . $kategori_penerima;
+        $stmt_hewan = mysqli_prepare($conn, "SELECT id_hewan FROM hewan_qurban WHERE id_hewan = ? AND id_periode = ?");
+        mysqli_stmt_bind_param($stmt_hewan, 'ii', $id_hewan, $id_periode_aktif);
+        mysqli_stmt_execute($stmt_hewan);
+        $hewan_valid = mysqli_stmt_get_result($stmt_hewan);
+        mysqli_stmt_close($stmt_hewan);
 
-        $query_insert_pembagian = "INSERT INTO pembagian_daging (id_periode, id_hewan, kategori_penerima, total_berat, jumlah_paket, berat_per_paket) VALUES ($id_periode_aktif, $id_hewan, '$kategori_penerima', $total_berat, $jumlah_paket, $berat_per_paket)";
+        $stmt_user_target = mysqli_prepare($conn, "SELECT nik FROM users WHERE $role_field = 1 AND is_active = TRUE ORDER BY nik");
+        mysqli_stmt_execute($stmt_user_target);
+        $result_user_target = mysqli_stmt_get_result($stmt_user_target);
+        $users_target = [];
+        while ($row_user = mysqli_fetch_assoc($result_user_target)) {
+            $users_target[] = $row_user['nik'];
+        }
+        mysqli_stmt_close($stmt_user_target);
 
-        if (mysqli_query($conn, $query_insert_pembagian)) {
-            $id_pembagian_baru = mysqli_insert_id($conn);
-            $query_user_target = "";
-            $role_field = 'is_' . $kategori_penerima; // Cth: is_warga, is_berqurban
+        if (!$hewan_valid || mysqli_num_rows($hewan_valid) === 0) {
+            $error = "Hewan yang dipilih tidak berasal dari periode aktif.";
+        } elseif (empty($users_target)) {
+            $error = "Tidak ada user yang ditemukan untuk kategori '$kategori_penerima'.";
+        } else {
+            mysqli_begin_transaction($conn);
+            try {
+                $query_insert_pembagian = "INSERT INTO pembagian_daging
+                    (id_periode, id_hewan, kategori_penerima, total_berat, jumlah_paket, berat_per_paket)
+                    VALUES (?, ?, ?, ?, ?, ?)";
+                $stmt_pembagian = mysqli_prepare($conn, $query_insert_pembagian);
+                mysqli_stmt_bind_param($stmt_pembagian, 'iisdid', $id_periode_aktif, $id_hewan, $kategori_penerima, $total_berat, $jumlah_paket, $berat_per_paket);
+                if (!mysqli_stmt_execute($stmt_pembagian)) {
+                    throw new RuntimeException('Gagal menyimpan data pembagian.');
+                }
+                $id_pembagian_baru = mysqli_stmt_insert_id($stmt_pembagian);
+                mysqli_stmt_close($stmt_pembagian);
 
-            $query_user_target = "SELECT nik FROM users WHERE $role_field = 1 AND is_active = TRUE";
-
-            $result_user_target = mysqli_query($conn, $query_user_target);
-            $users_target = [];
-            while ($row_user = mysqli_fetch_assoc($result_user_target)) {
-                $users_target[] = $row_user['nik'];
-            }
-
-            if (!empty($users_target)) {
+                $query_insert_distribusi = "INSERT INTO distribusi_daging
+                    (nik_penerima, id_pembagian, id_periode, nomor_paket, qr_code, berat_daging, status_ambil)
+                    VALUES (?, ?, ?, ?, ?, ?, 'belum_ambil')";
+                $stmt_distribusi = mysqli_prepare($conn, $query_insert_distribusi);
                 $jumlah_user_target = count($users_target);
-                $paket_per_user = floor($jumlah_paket / $jumlah_user_target);
+                $paket_per_user = intdiv($jumlah_paket, $jumlah_user_target);
                 $sisa_paket = $jumlah_paket % $jumlah_user_target;
-
                 $nomor_urut_paket = 1;
+                $jumlah_inserted = 0;
+
                 foreach ($users_target as $index_user => $nik_target) {
                     $jumlah_paket_user = $paket_per_user + ($index_user < $sisa_paket ? 1 : 0);
-
                     for ($i = 0; $i < $jumlah_paket_user; $i++) {
-                        if ($nomor_urut_paket > $jumlah_paket) break;
-
-                        $nomor_paket_generated = strtoupper(substr($kategori_penerima, 0, 1)) . "-" . str_pad($nomor_urut_paket++, 3, '0', STR_PAD_LEFT);
-                        $qr_code_generated = generate_qr_code($nomor_paket_generated . "-" . $id_periode_aktif . "-" . $id_pembagian_baru . "-" . $nik_target);
-
-                        $query_insert_distribusi = "INSERT INTO distribusi_daging (nik_penerima, id_pembagian, id_periode, nomor_paket, qr_code, berat_daging, status_ambil) VALUES ('$nik_target', $id_pembagian_baru, $id_periode_aktif, '$nomor_paket_generated', '$qr_code_generated', $berat_per_paket, 'belum_ambil')";
-                        mysqli_query($conn, $query_insert_distribusi);
+                        $nomor_paket_generated = strtoupper(substr($kategori_penerima, 0, 1)) . '-' . $id_pembagian_baru . '-' . str_pad((string) $nomor_urut_paket++, 3, '0', STR_PAD_LEFT);
+                        $qr_code_generated = generate_qr_code($nomor_paket_generated . '-' . $id_periode_aktif . '-' . $nik_target);
+                        mysqli_stmt_bind_param($stmt_distribusi, 'siissd', $nik_target, $id_pembagian_baru, $id_periode_aktif, $nomor_paket_generated, $qr_code_generated, $berat_per_paket);
+                        if (!mysqli_stmt_execute($stmt_distribusi)) {
+                            throw new RuntimeException('Gagal menyimpan salah satu paket distribusi.');
+                        }
+                        $jumlah_inserted++;
                     }
                 }
+                mysqli_stmt_close($stmt_distribusi);
+                if ($jumlah_inserted !== $jumlah_paket) {
+                    throw new RuntimeException('Jumlah paket yang tersimpan tidak sesuai permintaan.');
+                }
+                mysqli_commit($conn);
                 $success = "Distribusi daging berhasil di-generate untuk $jumlah_paket paket!";
-            } else {
-                $error = "Tidak ada user yang ditemukan untuk kategori '$kategori_penerima'.";
-                mysqli_query($conn, "DELETE FROM pembagian_daging WHERE id_pembagian = $id_pembagian_baru");
+            } catch (Throwable $exception) {
+                mysqli_rollback($conn);
+                error_log('Distribution generation rolled back: ' . $exception->getMessage());
+                $error = $exception->getMessage();
             }
-        } else {
-            $error = "Error saat menyimpan data pembagian: " . mysqli_error($conn);
         }
     }
 } elseif ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['generate_distribusi']) && !$id_periode_aktif) {
@@ -134,6 +152,7 @@ if (!function_exists('rupiah')) {
                     </div>
                     <div class="card-body">
                         <form method="POST" class="needs-validation">
+                            <?php echo csrf_field(); ?>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="id_hewan" class="form-label">Pilih Hewan:</label>

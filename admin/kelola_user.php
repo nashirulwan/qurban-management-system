@@ -7,6 +7,7 @@ cek_role('admin');
 
 // Proses tambah user saat form disubmit
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'tambah') {
+    verify_csrf_request();
     // Ambil dan amankan semua data dari form
     $nik = mysqli_real_escape_string($conn, $_POST['nik']);
     $username = mysqli_real_escape_string($conn, $_POST['username']);
@@ -67,6 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
                 <div class="card-header"><h2 class="card-title">Tambah User Baru</h2></div>
                 <div class="card-body">
                     <form method="POST" action="">
+                        <?php echo csrf_field(); ?>
                         <input type="hidden" name="action" value="tambah">
                         <div class="d-flex flex-wrap gap-4 mb-3">
                             <div class="form-group" style="flex: 1; min-width: 250px;"><label for="nik" class="form-label">NIK</label><input type="text" id="nik" name="nik" class="form-control" required></div>

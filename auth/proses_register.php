@@ -2,9 +2,8 @@
 require_once '../config/database.php';
 require_once '../function/helper.php';
 
-session_start();
-
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    verify_csrf_request();
     $nik = mysqli_real_escape_string($conn, $_POST['nik']);
     $username = mysqli_real_escape_string($conn, $_POST['username']);
     $password = $_POST['password'];

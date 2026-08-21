@@ -1,5 +1,8 @@
 <?php
 require_once '../config/database.php';
+require_once '../function/helper.php';
+
+cek_role('admin');
 
 header('Content-Type: application/json');
 

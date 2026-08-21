@@ -1,5 +1,6 @@
 <?php
 // file: src/components/header_admin.php (Diperbarui)
+require_once __DIR__ . '/../../function/helper.php';
 
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
@@ -20,7 +21,10 @@ if (session_status() == PHP_SESSION_NONE) {
       <a href="kelola_user.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'kelola_user.php' ? 'active' : ''; ?>">Kelola User</a>
       <a href="kelola_periode.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'kelola_periode.php' ? 'active' : ''; ?>">Kelola Periode</a>
       <a href="kelola_hewan.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'kelola_hewan.php' ? 'active' : ''; ?>">Kelola Hewan</a>
-      <a href="../auth/logout.php" class="nav-link btn btn-outline-primary">Logout</a>
+      <form method="POST" action="../auth/logout.php" class="d-inline">
+        <?php echo csrf_field(); ?>
+        <button type="submit" class="nav-link btn btn-outline-primary">Logout</button>
+      </form>
     </nav>
   </div>
 </header>
